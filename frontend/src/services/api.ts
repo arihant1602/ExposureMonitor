@@ -65,3 +65,24 @@ export const checkPassword = async (hashPrefix: string): Promise<PasswordCheckRe
   const response = await apiClient.get<PasswordCheckResponse>(`/check/password/${hashPrefix}`);
   return response.data;
 };
+
+export const getBreaches = async (): Promise<Breach[]> => {
+  const response = await apiClient.get<Breach[]>('/breaches');
+  return response.data;
+};
+
+export const getBreachSamples = async (id: number): Promise<string[]> => {
+  const response = await apiClient.get<string[]>(`/breaches/${id}/samples`);
+  return response.data;
+};
+
+export interface GlobalStats {
+  total_breaches: number;
+  total_exposures: number;
+  unique_emails: number;
+}
+
+export const getStats = async (): Promise<GlobalStats> => {
+  const response = await apiClient.get<GlobalStats>('/stats');
+  return response.data;
+};

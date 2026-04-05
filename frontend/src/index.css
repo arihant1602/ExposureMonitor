@@ -7,8 +7,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* Diamond gradient from #004687 to #001121 */
-  background: radial-gradient(circle at center, #004687 0%, #001121 100%);
+  /* Diamond-style conic gradient matching the Figma "Diamond" fill */
+  background: #000814;
+  background-image: conic-gradient(from 0deg at 50% 50%, #000814 0deg 45deg, #002b5c 90deg, #000814 135deg 225deg, #002b5c 270deg, #000814 315deg 360deg);
   background-attachment: fixed;
   color: #ffffff;
   font-family: var(--font-sans);

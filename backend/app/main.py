@@ -181,3 +181,77 @@ async def check_password(hash_prefix: str):
         raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         conn.close()
+
+@app.get("/api/breaches", response_model=List[Dict[str, Any]])
+async def get_all_breaches():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM breaches ORDER BY date DESC")
+        rows = cursor.fetchall()
+        
+        breaches = []
+        for row in rows:
+            breach = dict(row)
+            if isinstance(breach.get('compromised_data'), str):
+                try:
+                    breach['compromised_data'] = json.loads(breach['compromised_data'])
+                except json.JSONDecodeError:
+                    breach['compromised_data'] = []
+            if isinstance(breach.get('domains'), str):
+                try:
+                    breach['domains'] = json.loads(breach['domains'])
+                except json.JSONDecodeError:
+                    breach['domains'] = []
+            breaches.append(breach)
+        return breaches
+    except Exception as e:
+        logger.error(f"Database query failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        conn.close()
+
+@app.get("/api/breaches/{breach_id}/samples", response_model=List[str])
+async def get_breach_samples(breach_id: int):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.email FROM users u
+            JOIN user_breaches ub ON u.id = ub.user_id
+            WHERE ub.breach_id = ?
+            LIMIT 10
+        ''', (breach_id,))
+        rows = cursor.fetchall()
+        return [row['email'] for row in rows]
+    except Exception as e:
+        logger.error(f"Database query failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        conn.close()
+
+@app.get("/api/stats")
+async def get_global_stats():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) FROM breaches")
+        total_breaches = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM user_breaches")
+        total_exposures = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM users")
+        unique_emails = cursor.fetchone()[0]
+        
+        return {
+            "total_breaches": total_breaches,
+            "total_exposures": total_exposures,
+            "unique_emails": unique_emails
+        }
+    except Exception as e:
+        logger.error(f"Stats query failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        conn.close()
