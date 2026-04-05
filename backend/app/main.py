@@ -1,8 +1,11 @@
 import json
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
+from urllib import request as urllib_request
+from urllib.error import URLError, HTTPError
 
 from app.database import get_db_connection, init_db
 from app.services.risk_engine import calculate_risk_score, generate_playbook
@@ -161,7 +164,8 @@ async def check_password(hash_prefix: str):
     prefix = hash_prefix.upper()
     if len(prefix) != 5:
         raise HTTPException(status_code=400, detail="Hash prefix must be exactly 5 characters")
-        
+
+    suffixes = []
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
@@ -169,18 +173,55 @@ async def check_password(hash_prefix: str):
             SELECT hash_suffix, count FROM leaked_passwords WHERE hash_prefix = ?
         ''', (prefix,))
         rows = cursor.fetchall()
-        
         suffixes = [{"suffix": row['hash_suffix'], "count": row['count']} for row in rows]
-        
-        return PasswordCheckResponse(
-            prefix=prefix,
-            suffixes=suffixes
-        )
     except Exception as e:
         logger.error(f"Database query failed: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         conn.close()
+
+    use_live_range_api = os.getenv("USE_LIVE_K_ANON_API", "0").strip().lower() in {"1", "true", "yes"}
+    if use_live_range_api and not suffixes:
+        try:
+            suffixes = _fetch_live_k_anon_range(prefix)
+        except Exception as e:
+            # Keep API resilient: local mode continues even if live source is unavailable.
+            logger.warning(f"Live k-anonymity range lookup failed for prefix {prefix}: {e}")
+
+    return PasswordCheckResponse(prefix=prefix, suffixes=suffixes)
+
+
+def _fetch_live_k_anon_range(prefix: str) -> List[Dict[str, Any]]:
+    """Optional lawful live integration: query a k-anonymity range endpoint without sending plaintext passwords."""
+    url = f"https://api.pwnedpasswords.com/range/{prefix}"
+    req = urllib_request.Request(
+        url,
+        headers={
+            "Add-Padding": "true",
+            "User-Agent": "ExposureMonitor/1.0 (k-anonymity range lookup)",
+        },
+        method="GET",
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=8) as response:
+            body = response.read().decode("utf-8", errors="ignore")
+    except (HTTPError, URLError) as exc:
+        raise RuntimeError(str(exc))
+
+    parsed: List[Dict[str, Any]] = []
+    for line in body.splitlines():
+        if ":" not in line:
+            continue
+        suffix, count = line.split(":", 1)
+        suffix = suffix.strip().upper()
+        try:
+            count_value = int(count.strip())
+        except ValueError:
+            continue
+        if len(suffix) == 35:
+            parsed.append({"suffix": suffix, "count": count_value})
+    return parsed
 
 @app.get("/api/breaches", response_model=List[Dict[str, Any]])
 async def get_all_breaches():

@@ -12,10 +12,12 @@ const apiClient = axios.create({
 export interface Breach {
   id: number;
   name: string;
-  domain: string;
-  breach_date: string;
-  added_date: string;
-  description: string;
+  domain?: string;
+  breach_date?: string;
+  date?: string;
+  added_date?: string;
+  description?: string;
+  severity?: number;
   compromised_data: string[];
   domains: string[];
 }

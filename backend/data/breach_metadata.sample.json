@@ -1,0 +1,28 @@
+{
+  "breaches": [
+    {
+      "name": "Example Public Incident A",
+      "date": "2023-03-15",
+      "severity": 6,
+      "domains": ["example-a.com"],
+      "compromised_data": ["Email", "Names"],
+      "source_url": "https://www.cisa.gov/news-events"
+    },
+    {
+      "name": "Example Public Incident B",
+      "date": "2024-07-21",
+      "severity": 8,
+      "domains": ["example-b.org", "example-b.com"],
+      "compromised_data": ["Email", "Password", "Phone Numbers"],
+      "source_url": "https://www.ncsc.gov.uk/"
+    },
+    {
+      "name": "Example Public Incident C",
+      "date": "2025-01-09",
+      "severity": 5,
+      "domains": ["example-c.io"],
+      "compromised_data": ["Email"],
+      "source_url": "https://www.enisa.europa.eu/"
+    }
+  ]
+}
