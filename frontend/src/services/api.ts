@@ -9,11 +9,41 @@ const apiClient = axios.create({
   },
 });
 
+export interface Breach {
+  id: number;
+  name: string;
+  domain: string;
+  breach_date: string;
+  added_date: string;
+  description: string;
+  compromised_data: string[];
+  domains: string[];
+}
+
 export interface CheckExposureResponse {
   email: string;
   is_exposed: boolean;
-  breaches: string[];
+  breaches: Breach[];
   risk_score: number;
+  recommendations: string[];
+}
+
+export interface DomainCheckResponse {
+  domain: string;
+  exposed_emails: {
+    email: string;
+    breaches: string[];
+  }[];
+}
+
+export interface PasswordSuffixResponse {
+  suffix: string;
+  count: number;
+}
+
+export interface PasswordCheckResponse {
+  prefix: string;
+  suffixes: PasswordSuffixResponse[];
 }
 
 export const checkHealth = async () => {
@@ -23,5 +53,15 @@ export const checkHealth = async () => {
 
 export const checkExposure = async (email: string): Promise<CheckExposureResponse> => {
   const response = await apiClient.post<CheckExposureResponse>('/check', { email });
+  return response.data;
+};
+
+export const checkDomain = async (domain: string): Promise<DomainCheckResponse> => {
+  const response = await apiClient.post<DomainCheckResponse>('/check/domain', { domain });
+  return response.data;
+};
+
+export const checkPassword = async (hashPrefix: string): Promise<PasswordCheckResponse> => {
+  const response = await apiClient.get<PasswordCheckResponse>(`/check/password/${hashPrefix}`);
   return response.data;
 };
